@@ -10,12 +10,13 @@ function render(group,dimension,chart,attrib) {
     .x(d3.scale.linear().domain([
                                     dimension.bottom(1)[0][attrib] - 0.5,
                                     dimension.top(1)[0][attrib] + 0.5
-                                    ]))
+                                ]))
     .brushOn(false)
-    .yAxisLabel("This is the Y Axis!")
     .dimension(dimension)
     .group(group)
     .centerBar(true)
+    .yAxisLabel("",10)
+    .renderHorizontalGridLines(true)
     .xAxis().tickFormat(d3.format("d"));
 
     chart.render();
@@ -27,18 +28,20 @@ function renderGenre(group,dimension,chart,names) {
     $(chart).css("padding-top",($("header").height()+20)+"px")
     
     var chart = dc.barChart(chart);
-    console.log(names)
+    console.log(dimension.top(Infinity),group.all())
+
+    //names.unshift("")
     chart
     .width(600)
     .height(480)
     .x(d3.scale.ordinal().domain(names))
+    .xUnits(dc.units.ordinal)
     .brushOn(false)
-    .yAxisLabel("This is the Y Axis!")
     .dimension(dimension)
     .group(group)
-    .centerBar(true)
-    .xAxis().tickFormat(d3.format("d"));
-
+    .yAxisLabel("",10)
+    .renderHorizontalGridLines(true)
+    
     chart.render();
 
 }
@@ -93,7 +96,6 @@ d3.json("movies.json", function(error, json){
 
         $("#tickets").click(function(){
             if(!$(this).hasClass("active")){
-                console.log(yearDim.bottom(1)[0],yearDim.top(1)[0])
                 render(ticketsByYear,yearDim,"#chart","Year");
                 $("#tabs li").removeClass("active")
                 $(this).addClass("active")
