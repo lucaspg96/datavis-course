@@ -1,0 +1,14 @@
+body {
+    font-family: "helvetica";
+    width: 1800px;
+}
+
+.chart {
+	display: inline-block;
+	width: 45%;
+}
+
+svg{
+	clear:left;
+}
+
