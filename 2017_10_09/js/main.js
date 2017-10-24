@@ -10,9 +10,11 @@ d3.csv("earthquakes.csv", function (data) {
     d.dtg = dateFormater.parse(d.origintime.substr(0,19));
     d.magnitude = d3.round(+d.magnitude,1);
     d.depth = d3.round(+d.depth,0);
+    d.lat = +d.latitude;
+    d.lon = +d.longitude;
   });
 
-  console.log(data)
+  // console.log(data)
 
   // Run the data through crossfilter and load our 'facts'
   var fact = crossfilter(data)
@@ -99,11 +101,29 @@ d3.csv("earthquakes.csv", function (data) {
 
   // Render the Charts
   dc.renderAll();
-  setTimout(function(){
+  setTimeout(function(){
     $("#dc-table-graph tbody").css({
       "overflow-y":"scroll",
       "height":"10px",
       "max-height":"10px"
     })
   },1000)
+
+  var map = L.map('map').setView([-41.05,172.93], 5);
+  L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="http://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+    maxZoom: 17
+  }).addTo(map);
+
+  data.forEach(d => {
+    var circle = L.circle([d.lat, d.lon], 10000, {
+     color: '#fd8d3c',
+     weight: 2,
+     fillColor: '#fecc5c',
+     fillOpacity: 0.5
+    }).addTo(map);
+
+    circle.bindPopup("Magnitude: "+d.magnitude+"<br>Data: "+d.dtg);
+
+  })
 });
