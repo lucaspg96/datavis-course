@@ -4,12 +4,13 @@
 // load data from a csv file
 d3.csv("Crimes_Chicago_Sep2017.csv", function (data) {
   
-  var format = d3.time.format("%d/%m/%Y");
+  var format = d3.time.format("%m/%d/%Y");
 
   data.forEach(function(d){
     d.lat = +d.Latitude;
     d.lon = +d.Longitude;
-    d.date = format.parse(d["Updated On"].split(" ")[0])
+    d.date = format.parse(d.Date.split(" ")[0])
+    d.day = d3.time.day(d.date)
   });
 
   console.log(data[0])
