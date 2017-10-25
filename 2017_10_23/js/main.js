@@ -79,21 +79,26 @@ d3.csv("Crimes_Chicago_Sep2017.csv", function (data) {
   .group(typeGroup)
   .yAxisLabel("",10)
   .renderHorizontalGridLines(true)
-  
-  barChart.render();
+  .on('renderlet', function(chart){
+                      chart.selectAll('rect.bar').each(function(d){
+                        console.log(d.x)
+                        d3.select(this).attr("style", "fill: " + colors[d.x]); // use key accessor if you are using a custom accessor
+                   });
+                  });
 
-  setTimeout(function(){
-    var recs = document.querySelector('.stack').children
-    for(i in recs){
-      let rec = recs[i]
+  barChart.render()
+  // setTimeout(function(){
+  //   var recs = document.querySelector('.stack').children
+  //   for(i in recs){
+  //     let rec = recs[i]
 
-      try{
-        let type = rec.children[0].innerHTML.split(":")[0]
-        $(rec).attr("fill",colors[type])
-      }
-      catch(err){}
-    }
-  },1000)
+  //     try{
+  //       let type = rec.children[0].innerHTML.split(":")[0]
+  //       $(rec).attr("fill",colors[type])
+  //     }
+  //     catch(err){}
+  //   }
+  // },1000)
 
   var timeDim = fact.dimension(d => d.date)
   var typeSeriesDim = fact.dimension(d => [d["Primary Type"],d.date])
