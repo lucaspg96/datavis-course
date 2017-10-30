@@ -1,24 +1,31 @@
 class Network {
-  function constructor(){
-      this.width = 960,
-      this.height = 800,
-      // our force directed layout
-      this.force = d3.layout.force(), 
-      // these will point to the circles and lines
-      // of the nodes and links
-      this.link = null,
-      this.node = null,
-      // these will hold the svg groups for
-      // accessing the nodes and links display
-      this.linksG = null,
-      this.nodesG = null,
-      // tooltip used to display details
-      this.tooltip = Tooltip("vis-tooltip", 230),
-      this.network; //function
+
+  constructor(width=500,height=500){
+    this.width = width;
+    this.height = height;
+    // our force directed layout
+    this.force = d3.layout.force();
+    // these will point to the circles and lines
+    // of the nodes and links
+    this.link = null;
+    this.node = null;
+    // these will hold the svg groups for
+    // accessing the nodes and links display
+    this.linksG = null;
+    this.nodesG = null;
+    // tooltip used to display details
+    this.tooltip = Tooltip("vis-tooltip", 230);
+
+    this.radiusDomain = undefined;
+
+    this.showDetails = d => "";
+    this.hideDetails = d => "";
+
   }
+
   // Helper function to map node id's to node objects.
   // Returns d3.map of ids -> nodes
-  function mapNodes(nodes) {
+  __mapNodes(nodes) {
     var nodesMap;
     nodesMap = d3.map();
     nodes.forEach(function(n) {
@@ -27,20 +34,47 @@ class Network {
     return nodesMap;
   }
 
-  function setupData(data){
-    var circleRadius, countExtent;
+  //returns a json where the key is the node id and the value is its degree
+  getDegreesMap(data=this.allData){
+    var map = {};
 
-    countExtent = d3.extent(data.nodes, d => d.playcount);
+    data.nodes.forEach(n => {
+      map[n.id] = 0;
+
+      data.links.forEach(l => {
+        if(l.source == n.id || l.target == n.id)
+          map[n.id] += 1          
+      })
+
+    })
+
+    return map;
+  }
+
+  //set the function used to calculate the domain of the radius
+  setRadiusDomain(callback){
+    this.radiusDomain = callback
+  }
+
+  __setupData(data){
+    var circleRadius, countExtent;
+    var degreesMap = this.getDegreesMap(data);
+    
+    if(!this.radiusDomain)
+      this.radiusDomain = d=>degreesMap[d.id]
+
+    countExtent = d3.extent(data.nodes, this.radiusDomain );
     circleRadius = d3.scale.sqrt().range([3, 15]).domain(countExtent);
 
     data.nodes.forEach(n => {
-      n.x = Math.floor(Math.random() * width);
-      n.y = Math.floor(Math.random() * height);
+      n.x = Math.floor(Math.random() * this.width);
+      n.y = Math.floor(Math.random() * this.height);
 
-      n.radius = circleRadius(n.playcount);
+      n.degree = degreesMap[n.id]
+      n.radius = circleRadius(this.radiusDomain(n));
     });
 
-    var nodesMap = mapNodes(data.nodes);
+    var nodesMap = this.__mapNodes(data.nodes);
 
     data.links.forEach(l => {
       l.source = nodesMap.get(l.source);
@@ -50,58 +84,62 @@ class Network {
     return data;
   }
 
-  // Mouseover tooltip function
-  function showDetails(node,d, i) {
-    
+  //set the function to "mouseover" event
+  onShowDetails(callback){
+    this.showDetails = callback
   }
 
-  // Mouseout function
-  function hideDetails(d, i) {
-    
+  //set the function to "mouseout" event
+  onHideDetails(callback){
+    this.hideDetails = callback
   }
 
   // enter/exit display for nodes
-  function updateNodes() {
+  __updateNodes(color) {
+    var classThis = this
     //select all node elements in svg group of nodes
     //select all node elements in svg group of nodes
-    node = nodesG.selectAll("circle.node")
-    .data(allData.nodes, d => d.id);
+    this.node = this.nodesG.selectAll("circle.node")
+    .data(this.allData.nodes, d => d.id);
 
     // set cx, cy, r attributes and stroke-width style
-    node.enter()
+    this.node.enter()
           .append("circle").attr("class","node")
           .attr("cx",d => d.x)
           .attr("cy",d => d.y)
           .attr("r",d => d.radius)
+          .attr("fill",color)
           .style("stroke-width",1)
-  
-    node.on("mouseover", function(d,i){
-      showDetails(this,d,i);
+
+    this.node.on("mouseover", function(d,i){
+      classThis.showDetails(d, i, this, classThis);
     })
-    .on("mouseout", hideDetails);
+    .on("mouseout", function(d,i){
+      classThis.hideDetails(d, i, this, classThis);
+    });
   }
 
   // enter/exit display for links
-  function updateLinks() {
+  __updateLinks() {
     //select all link elements in svg group of nodes
-    link = linksG.selectAll("line.link")
-                  .data(allData.links, d => `${d.source.id}_${d.target.id}`);
-                  link.enter()
-                  .append("line")
-                  .attr("class", "link")
-                  .attr("stroke", "#ddd").attr("stroke-opacity", 0.8)
-                  .attr("x1", d => d.source.x )
-                  .attr("y1", d => d.source.y )
-                  .attr("x2", d => d.target.x )
-                  .attr("y2", d => d.target.y );
+    this.link = this.linksG.selectAll("line.link")
+                  .data(this.allData.links, d => `${d.source.id}_${d.target.id}`);
+    this.link.enter()
+    .append("line")
+    .attr("class", "link")
+    .attr("stroke", "#ddd").attr("stroke-opacity", 0.8)
+    .attr("x1", d => d.source.x )
+    .attr("y1", d => d.source.y )
+    .attr("x2", d => d.target.x )
+    .attr("y2", d => d.target.y );
   }
 
   // tick function for force directed layout
-  var forceTick = function(e) {
-    node.attr("cx", d => d.x })
+  __forceTick(e) {
+    this.node.attr("cx", d => d.x)
     .attr("cy", d => d.y );
 
-    link.attr("x1", d => d.source.x )
+    this.link.attr("x1", d => d.source.x )
     .attr("y1", d => d.source.y )
     .attr("x2", d => d.target.x )
     .attr("y2", d => d.target.y );
@@ -110,33 +148,34 @@ class Network {
 
   // Starting point for network visualization
   // Initializes visualization and starts force layout
-  network = function(selection, data) {
+  render(selection, data, color="red",charge=-200, linkDistance=50) {
     var vis;
-
+    var classThis = this;
     // format our data
-    allData = setupData(data)
+    this.allData = this.__setupData(data)
 
     // create our svg and groups
-    vis = d3.select(selection).append("svg").attr("width",width).attr("height",height);
-    linksG = vis.append("g").attr("id","links");
-    nodesG = vis.append("g").attr("id","nodes");
+    vis = d3.select(selection).append("svg").attr("width",this.width).attr("height",this.height);
+    this.linksG = vis.append("g").attr("id","links");
+    this.nodesG = vis.append("g").attr("id","nodes");
 
     // setup the size of the force environment
-    force.size([width,height]);
+    this.force.size([this.width,this.height]);
 
     // set the tick callback, charge and linkDistance
-    force.on("tick", forceTick).charge(-200).linkDistance(50);
+    this.force.on("tick", function(e){
+      classThis.__forceTick(e);
+    })
+    .charge(charge).linkDistance(linkDistance);
 
     // setup nodes and links
-    force.nodes(allData.nodes);
-    force.links(allData.links);
+    this.force.nodes(this.allData.nodes);
+    this.force.links(this.allData.links);
 
-    updateNodes();
-    updateLinks();
+    this.__updateNodes(color);
+    this.__updateLinks();
 
     // perform rendering and start force layout
-    return force.start();
+    this.force.start();
   };
-  // Final act of Network() function is to return the inner 'network()' function.
-  return network;
 }
